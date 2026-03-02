@@ -16,11 +16,12 @@ from pypdf import PdfReader
 from docx import Document as DocxDocument
 import io
 
-OLLAMA_API = os.getenv("OLLAMA_API", "http://localhost:11434")
+OLLAMA_API = os.getenv("OLLAMA_API", "http://ollama:11434")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://raguser:ragpass@postgres:5432/ragdb")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-CHUNK_SIZE = 500
+CHUNK_SIZE = 512
 CHUNK_OVERLAP = 50
+MAX_CHUNK_CHARS = 2000  # Maximale Zeichen pro Chunk, um pgvector-Limit zu vermeiden
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +34,23 @@ _pool: asyncpg.Pool | None = None
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+        # Try to create the connection pool with retry/backoff.
+        # This helps when the database container is still starting up.
+        max_attempts = 12
+        backoff = 1.0
+        for attempt in range(1, max_attempts + 1):
+            try:
+                _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
+                return _pool
+            except Exception as e:
+                # Print to stdout so the docker logs show the attempts.
+                print(f"DB connect attempt {attempt}/{max_attempts} failed: {e}")
+                if attempt == max_attempts:
+                    # Re-raise the last exception after exhausting retries.
+                    raise
+                # Wait before retrying (exponential backoff capped)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 8.0)
     return _pool
 
 
@@ -107,15 +124,20 @@ def parse_document(filename: str, file_bytes: bytes) -> str:
 # ---------------------------------------------------------------------------
 
 def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[str]:
-    """Teilt Text in Chunks mit Überlappung auf."""
     words = text.split()
     chunks: List[str] = []
     start = 0
     while start < len(words):
         end = start + chunk_size
-        chunk = " ".join(words[start:end])
-        if chunk.strip():
-            chunks.append(chunk.strip())
+        chunk = " ".join(words[start:end]).strip()
+
+        if chunk:
+            # Nullbytes raus + harte Zeichenbegrenzung
+            chunk = chunk.replace("\x00", "")
+            if len(chunk) > MAX_CHUNK_CHARS:
+                chunk = chunk[:MAX_CHUNK_CHARS]
+            chunks.append(chunk)
+
         start += chunk_size - overlap
     return chunks
 
@@ -126,14 +148,21 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
 
 async def get_embedding(text: str) -> List[float]:
     """Erstellt ein Embedding über die Ollama API."""
-    async with httpx.AsyncClient(timeout=None) as client:
-        resp = await client.post(
-            f"{OLLAMA_API}/api/embeddings",
-            json={"model": EMBEDDING_MODEL, "prompt": text},
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["embedding"]
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            resp = await client.post(
+                f"{OLLAMA_API}/api/embeddings",
+                json={"model": EMBEDDING_MODEL, 
+                      "prompt": text
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("embedding", [])
+    except Exception as e:
+        # Log helpful information for debugging in container logs
+        print(f"Error requesting embedding from {OLLAMA_API}: {e}")
+        raise
 
 
 async def get_embeddings_batch(texts: List[str], batch_size: int = 10) -> List[List[float]]:

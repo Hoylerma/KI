@@ -5,10 +5,11 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 import os
 
 from rag import init_db, close_db, ingest_document, build_rag_context, list_documents, delete_document
+import traceback
 
 app = FastAPI()
 
@@ -33,7 +34,7 @@ app.add_middleware(
 class ChatMessage(BaseModel):
     message: str
 
-OLLAMA_API = os.getenv("OLLAMA_API", "http://localhost:11434")
+OLLAMA_API = os.getenv("OLLAMA_API", "http://ollama:11434")
 
 
 @app.on_event("startup")
@@ -77,6 +78,8 @@ async def upload_document(file: UploadFile = File(...)):
         result = await ingest_document(file.filename, file_bytes)
         return {"status": "success", **result}
     except Exception as e:
+        tb = traceback.format_exc()
+        print("Exception during /upload:\n" + tb)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -85,6 +88,24 @@ async def get_documents():
     """Listet alle hochgeladenen Dokumente auf."""
     docs = await list_documents()
     return {"documents": docs}
+
+
+@app.get("/uploads")
+async def get_uploads_compat():
+    """Kompatibilitäts-Endpoint: alte Clients fragen /uploads ab.
+    Gibt dieselben Daten wie /documents zurück.
+    """
+    docs = await list_documents()
+    return {"documents": docs}
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Verhindert 404-Logs wenn der Browser /favicon.ico anfragt.
+    Liefert kein Icon zurück (204 No Content). Wenn gewünscht, kann
+    hier eine echte Datei mit FileResponse geliefert werden.
+    """
+    return Response(status_code=204)
 
 
 @app.delete("/documents/{filename}")
@@ -102,7 +123,6 @@ async def remove_document(filename: str):
 
 
 async def stream_response(prompt: str, request: Request):
-    # RAG-Kontext abrufen
     try:
         rag_context = await build_rag_context(prompt)
     except Exception as e:
@@ -111,8 +131,9 @@ async def stream_response(prompt: str, request: Request):
 
     if rag_context:
         augmented_prompt = (
-            "Beantworte die folgende Frage basierend auf dem bereitgestellten Kontext. "
-            "Wenn der Kontext nicht ausreicht, nutze dein allgemeines Wissen, aber weise darauf hin.\n\n"
+            "Beantworte die folgende Frage basierend auf dem bereitgestellten Kontext. Gib auch die Quellen an, Mit Titel des Dokuments und welche seiten du verwendet hast\n"
+            "Wenn der Kontext nicht ausreicht, nutze dein allgemeines Wissen, aber weise darauf hin.\n\n" \
+            "Antworte immer auf Deutsch.\n\n" \
             f"--- KONTEXT ---\n{rag_context}\n--- ENDE KONTEXT ---\n\n"
             f"Frage: {prompt}"
         )
@@ -121,31 +142,41 @@ async def stream_response(prompt: str, request: Request):
 
     async with httpx.AsyncClient() as client:
         try:
-            async with client.stream("POST",
-                f"{OLLAMA_API}/api/generate",
+            async with client.stream(
+                "POST",
+                f"{OLLAMA_API}/api/chat",
                 json={
-                    "model": "llama3.2",
-                    "prompt": augmented_prompt,
+                    "model": "mistral",
+                    "messages": [
+                        {"role": "user", "content": augmented_prompt}
+                    ],
                     "stream": True,
-                    "options": {
-                        "num_ctx": 8192
-                    }
+                    "options": {"num_ctx": 8192},
                 },
-                timeout=None
+                timeout=None,
             ) as response:
+                response.raise_for_status()
+
                 async for line in response.aiter_lines():
                     if await request.is_disconnected():
-                        print("Client hat die Verbindung getrennt")
                         return
-                    if line:
-                        chunk = json.loads(line)
-                        if chunk.get("error"):
-                            print(f"Ollama Fehler: {chunk['error']}")
-                            yield f"\n\n[Fehler: {chunk['error']}]"
-                            return
-                        yield chunk.get("response", "")
-                        if chunk.get("done"):
-                            break
+                    if not line:
+                        continue
+
+                    chunk = json.loads(line)
+
+                    if chunk.get("error"):
+                        yield f"\n\n[Fehler: {chunk['error']}]"
+                        return
+
+                    # /api/chat streamt content hier:
+                    msg = chunk.get("message") or {}
+                    content = msg.get("content")
+                    if content:
+                        yield content
+
+                    if chunk.get("done"):
+                        break
         except Exception as e:
             print(f"Fehler bei der Anfrage an Ollama: {e}")
             yield "\n\n[Fehler: Verbindung zu Ollama fehlgeschlagen]"

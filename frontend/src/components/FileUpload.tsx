@@ -47,6 +47,7 @@ export default function FileUpload() {
     }
   };
 
+  
   const handleToggle = () => {
     if (!expanded) fetchDocuments();
     setExpanded(!expanded);
