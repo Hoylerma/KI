@@ -163,20 +163,20 @@ function ChatApp() {
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div className="flex flex-col h-screen">
-        <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
-        <div className="flex flex-1 min-h-0">
-          {sidebarOpen && (
-            <Sidebar
-              conversations={conversations}
-              currentConversationId={currentConversationId}
-              startNewConversation={startNewConversation}
-              selectConversation={setCurrentConversationId}
-              deleteConversation={deleteConversation}
-              status={status}
-            />
-          )}
-          <div className="flex-1 min-w-0 bg-white">
+      <div className="flex h-screen overflow-hidden">
+        {sidebarOpen && (
+          <Sidebar
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            startNewConversation={startNewConversation}
+            selectConversation={setCurrentConversationId}
+            deleteConversation={deleteConversation}
+            status={status}
+          />
+        )}
+        <div className="flex flex-col flex-1 min-w-0">
+          <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+          <div className="flex-1 min-h-0">
             <Thread />
           </div>
         </div>

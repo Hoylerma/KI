@@ -20,7 +20,7 @@ function Sidebar({
   status,
 }: SidebarProps) {
   return (
-    <aside className="w-70 flex-shrink-0 flex flex-col h-full bg-[#000000] text-[#f6f6f6] overflow-hidden">
+    <aside className="w-[260px] flex-shrink-0 flex flex-col h-full bg-[#171717] text-[#f6f6f6] overflow-hidden">
       <div className="p-3">
         <button
           onClick={startNewConversation}
