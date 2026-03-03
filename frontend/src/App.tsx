@@ -153,7 +153,7 @@ function ChatApp() {
     isRunning,
     convertMessage: (msg: Message) => ({
       role: msg.sender === 'user' ? ('user' as const) : ('assistant' as const),
-      content: msg.text,
+      content: [{ type: 'text' as const, text: msg.text }],
       id: msg.id,
       createdAt: msg.timestamp,
     }),

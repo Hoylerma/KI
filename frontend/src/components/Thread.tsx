@@ -7,18 +7,38 @@ import {
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import { ArrowUp, Square, Bot } from 'lucide-react';
 
+function UserTextPart() {
+  return (
+    <MessagePartPrimitive.Text
+      component="p"
+      className="whitespace-pre-wrap break-words"
+    />
+  );
+}
+
+function AssistantTextPart() {
+  return <MarkdownTextPrimitive className="prose prose-sm max-w-none" />;
+}
+
+function AssistantEmptyPart() {
+  return (
+    <MessagePartPrimitive.InProgress>
+      <span className="inline-flex gap-1 py-1">
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+      </span>
+    </MessagePartPrimitive.InProgress>
+  );
+}
+
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="flex justify-end px-4 pb-4 w-full max-w-3xl mx-auto">
       <div className="max-w-[70%] bg-[#2f2f2f] text-white rounded-3xl px-4 py-3 text-sm">
         <MessagePrimitive.Parts
           components={{
-            Text: () => (
-              <MessagePartPrimitive.Text
-                component="p"
-                className="whitespace-pre-wrap break-words"
-              />
-            ),
+            Text: UserTextPart,
           }}
         />
       </div>
@@ -35,16 +55,8 @@ function AssistantMessage() {
       <div className="flex-1 min-w-0 text-sm text-gray-800">
         <MessagePrimitive.Parts
           components={{
-            Text: () => <MarkdownTextPrimitive className="prose prose-sm max-w-none" />,
-            Empty: () => (
-              <MessagePartPrimitive.InProgress>
-                <span className="inline-flex gap-1 py-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
-                </span>
-              </MessagePartPrimitive.InProgress>
-            ),
+            Text: AssistantTextPart,
+            Empty: AssistantEmptyPart,
           }}
         />
       </div>
