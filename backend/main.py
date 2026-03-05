@@ -4,29 +4,21 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel
-import os
 
-from langchain_rag import (
-    CHAT_MODEL,
-    OLLAMA_BASE_URL,
-    close_db,
-    delete_document,
-    ingest_document,
-    init_db,
-    list_documents,
-    rag_search_async,
-)
+from config import CHAT_MODEL, OLLAMA_BASE_URL
+from database import close_db, init_db
+from documents import delete_document, ingest_document, list_documents
+from retrieval import rag_search_async
 
 app = FastAPI()
 
 
 origins = [
-    "http://localhost",         
-    "http://127.0.0.1",       
-    "http://localhost:5173",   
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:80",
-    "*",
 ]
 
 app.add_middleware(

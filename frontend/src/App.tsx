@@ -8,9 +8,7 @@ import type { Conversation, Message } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Thread from './components/Thread';
-import { getStatus } from './api';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+import { getStatus, API_BASE_URL } from './api';
 
 function ChatApp() {
   const [status, setStatus] = useState<string>('Verbinde...');
