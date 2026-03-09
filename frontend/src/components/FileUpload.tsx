@@ -26,6 +26,7 @@ export default function FileUpload() {
     }
   };
 
+  
   const handleToggle = () => {
     if (!expanded) fetchDocuments();
     setExpanded(!expanded);
@@ -146,8 +147,9 @@ export default function FileUpload() {
           {error && (
             <p className="text-xs text-red-400 mt-2">{error}</p>
           )}
-
+        
           {/* Document list */}
+          
           {documents.length > 0 && (
             <ul className="mt-2 space-y-1">
               {documents.map(doc => (
@@ -171,6 +173,7 @@ export default function FileUpload() {
               ))}
             </ul>
           )}
+          
 
           {documents.length === 0 && !uploading && (
             <p className="text-xs text-[#666] mt-2 text-center">

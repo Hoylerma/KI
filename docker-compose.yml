@@ -37,7 +37,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - /mnt/dokumente/01_Internes/04_EDV_js:/app/watched_docs:ro
+      - /mnt/dokumente/01_Internes/04_EDV_js/01_CAS/03_Webclient:/app/watched_docs:ro
 
   pgadmin:
     image: dpage/pgadmin4:8.14

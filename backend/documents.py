@@ -26,7 +26,7 @@ async def ingest_document(filename: str, file_bytes: bytes) -> dict:
     documents = [
         Document(
             page_content=chunk,
-            metadata={"source": filename, "filename": filename, "chunk_index": i},
+            metadata={"source": filename, "filename": filename, "origin": "manual", "chunk_index": i},
         )
         for i, chunk in enumerate(chunks)
     ]
@@ -56,6 +56,7 @@ async def list_documents() -> List[dict]:
             JOIN langchain_pg_collection c ON e.collection_id = c.uuid
             WHERE c.name = $1
               AND e.cmetadata->>'filename' IS NOT NULL
+              AND e.cmetadata->>'origin' = 'manual'
             GROUP BY e.cmetadata->>'filename'
             ORDER BY MAX(e.id) DESC
             """,
