@@ -19,7 +19,7 @@ logger = logging.getLogger("bwiki.parsers")
 
 
 vision_llm = ChatOllama(
-    model="llava", 
+    model="llava-phi3", 
     base_url=OLLAMA_BASE_URL,
     temperature=0.0 
 )
@@ -56,9 +56,12 @@ def describe_image(image_bytes: bytes) -> str:
             content=[
                 {
                     "type": "text", 
-                    "text": "Describe this image, UI screenshot, or diagram in detail. "
-                            "Mention all visible text, buttons, numbers, and layout elements. "
-                            "If it is just a tiny meaningless logo or background, reply ONLY with 'UNIMPORTANT'."
+                    "text": "Beschreiben Sie dieses Bild, diesen UI-Screenshot oder dieses Diagramm detailliert."
+                    "Erwähnen Sie alle sichtbaren Texte, Schaltflächen, Zahlen und Layout-Elemente.. "
+                    "Geben Sie eine genaue Beschreibung, damit jemand, der das Bild nicht sehen kann, es sich vorstellen kann."
+                    "Nennen Sie am Ende die wichtigsten Informationen kurz zusammengefasst."
+                    "Antworten Sie auf Deutsch.Erwähnte englische Wörter im Bild dürfen übernommen werden, aber die Beschreibung selbst muss Deutsch sein."
+                            
                 },
                 {
                     "type": "image_url", 
@@ -72,10 +75,8 @@ def describe_image(image_bytes: bytes) -> str:
         response = vision_llm.invoke([message])
         description = response.content.strip()
         
-        # Unwichtige Bilder (wie Firmenlogos auf jeder Seite) ignorieren wir
-        if "UNIMPORTANT" in description.upper():
-            logger.info("Bild wurde als unwichtig klassifiziert.")
-            return ""
+        
+        
             
         return description
 

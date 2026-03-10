@@ -7,7 +7,7 @@ OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL") or os.getenv(
     "OLLAMA_API", "http://localhost:11434"
 )
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-CHAT_MODEL: str = os.getenv("CHAT_MODEL", "llama3.2")
+CHAT_MODEL: str = os.getenv("CHAT_MODEL", "llama3.1")
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL", "postgresql://raguser:ragpass@postgres:5432/ragdb"
 )
