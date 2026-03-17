@@ -1,4 +1,4 @@
-import { Plus, Trash2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, LogOut } from 'lucide-react';
 import type { Conversation } from '../types';
 import FileUpload from './FileUpload';
 
@@ -19,6 +19,13 @@ function Sidebar({
   deleteConversation,
   status,
 }: SidebarProps) {
+
+  // Die neue Logout-Funktion
+  const handleLogout = () => {
+    localStorage.removeItem('access_token'); // Token aus dem Browser löschen
+    window.location.reload(); // Seite neu laden, um den Türsteher (Login) zu triggern
+  };
+
   return (
     <aside className="w-[260px] flex-shrink-0 flex flex-col h-full bg-[#171717] text-[#f6f6f6] overflow-hidden">
       <div className="p-3">
@@ -70,7 +77,15 @@ function Sidebar({
 
       <div className="border-t border-white/10 mx-3" />
 
-      <div className="px-3 py-2">
+      {/* Neuer Bereich unten: Abmelden & Status */}
+      <div className="p-3 flex flex-col gap-3">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 border border-transparent hover:border-red-500/30 px-3 py-2 rounded font-medium text-sm transition-all"
+        >
+          <LogOut size={16} />
+          Abmelden
+        </button>
         <p className="text-xs text-[#a8a8a8] text-center">Status: {status}</p>
       </div>
     </aside>

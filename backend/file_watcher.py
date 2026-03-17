@@ -12,8 +12,14 @@ from pathlib import Path
 from typing import Dict
 
 from database import get_pool
-from documents import ingest_document, delete_document
+from documents import delete_document
 from config import COLLECTION_NAME
+
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from config import CHUNK_SIZE, CHUNK_OVERLAP
+from database import get_vector_store
+from parsers import parse_document
 
 logger = logging.getLogger("bwiki.watcher")
 
@@ -144,12 +150,8 @@ async def sync_documents(watch_dir: str) -> dict:
 async def ingest_document_with_hash(
     filename: str, file_bytes: bytes, file_hash: str
 ) -> dict:
-    """Wie ingest_document, aber speichert den File-Hash in den Metadaten."""
-    from langchain_core.documents import Document
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-    from config import CHUNK_SIZE, CHUNK_OVERLAP
-    from database import get_vector_store
-    from parsers import parse_document
+    """speichert den File-Hash in den Metadaten."""
+   
 
     text = parse_document(filename, file_bytes)
     if not text.strip():

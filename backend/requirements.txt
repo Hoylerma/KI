@@ -15,3 +15,4 @@ psycopg[binary]>=3.1.0
 Pillow
 pypdf[image]
 psycopg[pool]>=3.1.0
+ldap3

@@ -17,7 +17,7 @@ from config import OLLAMA_BASE_URL
 
 logger = logging.getLogger("bwiki.parsers")
 
-
+"""""
 vision_llm = ChatOllama(
     model="llava-phi3", 
     base_url=OLLAMA_BASE_URL,
@@ -25,7 +25,7 @@ vision_llm = ChatOllama(
 )
 
 def resize_image(image_bytes: bytes, max_size: int = 800) -> bytes:
-    """Verkleinert das Bild, um den VRAM der Grafikkarte zu schonen."""
+    
     try:
         img = Image.open(io.BytesIO(image_bytes))
         # Konvertiere zu RGB (falls es z.B. ein transparentes PNG ist)
@@ -44,7 +44,7 @@ def resize_image(image_bytes: bytes, max_size: int = 800) -> bytes:
         return image_bytes
 
 def describe_image(image_bytes: bytes) -> str:
-    """Schickt ein Bild an das lokale Vision-Modell und gibt die Beschreibung zurück."""
+    
     try:
 
         optimized_image_bytes = resize_image(image_bytes, max_size=800)
@@ -84,7 +84,7 @@ def describe_image(image_bytes: bytes) -> str:
         logger.error(f"Fehler bei der Bildanalyse: {e}")
         return ""
 
-
+"""
 def _parse_pdf(file_bytes: bytes, filename: str) -> str:
     """Liest Text und Bilder aus einer PDF aus und verschmilzt sie zu reinem Text."""
     try:
@@ -98,7 +98,7 @@ def _parse_pdf(file_bytes: bytes, filename: str) -> str:
             extracted = page.extract_text()
             if extracted:
                 text += extracted + "\n"
-                
+            """"
             # 2. Bilder auf dieser Seite suchen und analysieren
             for image_file_object in page.images:
                 logger.info(f"🖼️ Bild gefunden auf Seite {page_number} in Dokument {filename}, starte KI-Analyse...")
@@ -110,7 +110,7 @@ def _parse_pdf(file_bytes: bytes, filename: str) -> str:
                     # Füge die Beschreibung unsichtbar für den Nutzer in den Text ein
                     text += f"\n\n[KI-Bildbeschreibung (Seite {page_number}): {description}]\n\n"
                     logger.info(f"✅ Bild auf Seite {page_number} erfolgreich beschrieben.")
-                    
+             """
         return text
         
     except (PdfReadError, PdfStreamError, Exception) as e:

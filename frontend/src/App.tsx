@@ -9,15 +9,32 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Thread from './components/Thread';
 import { getStatus, API_BASE_URL } from './api';
+import Login from './components/LoginPage'; 
 
-function ChatApp() {
+
+export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    !!localStorage.getItem('access_token')
+  );
+
+  // Wenn der Token fehlt, zeigen wir nur die Login-Maske
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
+  // Wenn der Login erfolgreich war, laden wir den eigentlichen Chat
+  return <MainChat />;
+}
+
+
+function MainChat() {
   const [status, setStatus] = useState<string>('Verbinde...');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
-
+  
   // Use a ref to always have access to the latest conversationId in async handlers
   const currentConversationIdRef = useRef<string | null>(null);
   currentConversationIdRef.current = currentConversationId;
@@ -182,5 +199,3 @@ function ChatApp() {
     </AssistantRuntimeProvider>
   );
 }
-
-export default ChatApp;

@@ -3,21 +3,27 @@
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel
 from config import CHAT_MODEL, OLLAMA_BASE_URL, SYSTEM_PROMPT
 import asyncio
+from pydantic import BaseModel
+from fastapi import status
+
+# Importiere unsere frisch erstellte Funktion
+from auth import check_ldap_login
 
 import time
 import logging
 
 import os
-from file_watcher import watch_loop, sync_documents
+from file_watcher import watch_loop, sync_documents, ingest_document_with_hash
 
 from config import CHAT_MODEL, OLLAMA_BASE_URL
 from database import close_db, init_db
-from documents import delete_document, ingest_document, list_documents
+from documents import delete_document, list_documents
 from retrieval import rag_search_async
 
 app = FastAPI()
@@ -49,6 +55,10 @@ app.add_middleware(
 
 class ChatMessage(BaseModel):
     message: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 
 @app.on_event("startup")
@@ -89,7 +99,7 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Datei zu groß (max. 50 MB).")
 
     try:
-        result = await ingest_document(file.filename, file_bytes)
+        result = await ingest_document_with_hash(file.filename, file_bytes, "")
         return {"status": "success", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -204,6 +214,20 @@ async def chat(data: ChatMessage, request: Request):
         },
     )
 
+@app.post("/api/login")
+async def login_endpoint(req: LoginRequest):
+    
+    login_ok = check_ldap_login(req.username, req.password)
+    
+   
+    if not login_ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Falscher Benutzername oder Passwort"
+        )
+    
+    
+    return {"message": "Login erfolgreich", "access_token": "ldap-okay-token"}
 
 @app.on_event("startup")
 async def startup():

@@ -7,42 +7,6 @@ from config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION_NAME
 from database import get_pool, get_vector_store
 from parsers import parse_document
 
-
-async def ingest_document(filename: str, file_bytes: bytes) -> dict:
-    """Parse, split, embed, and store a document via LangChain PGVector."""
-    text = parse_document(filename, file_bytes)
-    if not text.strip():
-        raise ValueError("Dokument ist leer oder konnte nicht gelesen werden.")
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", " ", ""]
-    )
-    chunks = splitter.split_text(text)
-    if not chunks:
-        raise ValueError("Konnte keine Text-Chunks erstellen.")
-
-    documents = [
-        Document(
-            page_content=chunk,
-            metadata={"source": filename, "filename": filename, "origin": "manual", "chunk_index": i},
-        )
-        for i, chunk in enumerate(chunks)
-    ]
-
-    # Remove previous version of this document, then add fresh chunks.
-    await delete_document(filename)
-    vs = get_vector_store()
-    await vs.aadd_documents(documents)
-
-    return {
-        "filename": filename,
-        "chunks": len(chunks),
-        "characters": len(text),
-    }
-
-
 async def list_documents() -> List[dict]:
     """List all documents stored in the vector store (grouped by filename)."""
     pool = await get_pool()

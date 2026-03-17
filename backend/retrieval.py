@@ -1,8 +1,8 @@
+from json import tool
 from typing import List
 
 from database import get_vector_store
 from config import MAX_CONTEXT_CHARS, MIN_SIMILARITY, RAG_TOP_K, _CONTEXT_SEPARATOR
-
 
 async def rag_search_async(query: str, top_k: int = RAG_TOP_K) -> str:
     """
