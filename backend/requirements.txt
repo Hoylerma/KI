@@ -19,3 +19,6 @@ ldap3
 docling
 langchain-community
 rank_bm25
+langchain-classic
+sentence-transformers
+

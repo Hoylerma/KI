@@ -5,13 +5,21 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. System-Abhängigkeiten installieren (wichtig für spätere PDF-Verarbeitung)
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip \
+    tesseract-ocr \
+    tesseract-ocr-deu \
+    libgl1 \
+    libgles2 \
+    libglib2.0-0 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # 4. requirements.txt kopieren und Pakete installieren
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+
 
 # 5. Den restlichen Code des Backends kopieren
 COPY . .

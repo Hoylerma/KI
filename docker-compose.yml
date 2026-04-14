@@ -21,12 +21,12 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_API=${OLLAMA_API:-}
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-jina/jina-embeddings-v2-base-de}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
       - CHAT_MODEL=${CHAT_MODEL:-llama3.1}
       - CHUNK_SIZE=${CHUNK_SIZE:-2000}
       - CHUNK_OVERLAP=${CHUNK_OVERLAP:-400}
       - MAX_CONTEXT_CHARS=${MAX_CONTEXT_CHARS:-4000}
-      - RAG_TOP_K=${RAG_TOP_K:-15}
+      - RAG_TOP_K=${RAG_TOP_K:-5}
       - WATCH_DIR=/app/watched_docs
       - WATCH_INTERVAL=300
     depends_on:
@@ -34,7 +34,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - /mnt/dokumente/01_Internes/04_EDV_js/01_CAS/03_Webclient:/app/watched_docs:ro
+      - /mnt/dokumente/01_Internes/04_EDV_js/:/app/watched_docs:ro
 
   pgadmin:
     image: dpage/pgadmin4:8.14
