@@ -7,18 +7,13 @@ import asyncio
 import hashlib
 import logging
 import os
-import time
-from pathlib import Path
 from typing import Dict
 
-from database import get_pool
+from config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION_NAME
+from database import get_pool, get_vector_store
 from documents import delete_document
-from config import COLLECTION_NAME
-
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from config import CHUNK_SIZE, CHUNK_OVERLAP
-from database import get_vector_store
 from parsers import parse_document
 
 logger = logging.getLogger("bwiki.watcher")
@@ -41,8 +36,6 @@ def scan_directory(watch_dir: str) -> Dict[str, dict]:
     files = {}
     for root, _, filenames in os.walk(watch_dir):
         for filename in filenames:
-
-            # Ignoriere temporäre und versteckte Dateien direkt ---
             if filename.startswith(("~$", ".", "~", "._")):
                 continue
 
@@ -52,25 +45,21 @@ def scan_directory(watch_dir: str) -> Dict[str, dict]:
 
             filepath = os.path.join(root, filename)
 
-            
             try:
                 if os.path.getsize(filepath) > MAX_FILE_SIZE:
                     logger.warning(f"Datei zu groß, übersprungen: {filename}")
                     continue
 
-                
                 rel_path = os.path.relpath(filepath, watch_dir)
 
                 files[rel_path] = {
                     "filepath": filepath,
-                    "hash": file_hash(filepath), 
-                    "modified": os.path.getmtime(filepath),
+                    "hash": file_hash(filepath),
                 }
             except (PermissionError, OSError) as e:
-                
                 logger.warning(f"Zugriff verweigert auf '{filename}', wird übersprungen. Grund: {e}")
                 continue
-                
+
     return files
 
 
@@ -150,13 +139,12 @@ async def sync_documents(watch_dir: str) -> dict:
 async def ingest_document_with_hash(
     filename: str, file_bytes: bytes, file_hash: str
 ) -> dict:
-    """speichert den File-Hash in den Metadaten."""
-   
+    """Speichert den File-Hash in den Metadaten."""
 
     text = parse_document(filename, file_bytes)
     if not text.strip():
-       logger.warning(f"Dokument ist leer oder unlesbar, wird übersprungen: {filename}")
-       return {"filename": filename, "chunks": 0}
+        logger.warning(f"Dokument ist leer oder unlesbar, wird übersprungen: {filename}")
+        return {"filename": filename, "chunks": 0}
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
@@ -190,7 +178,7 @@ async def watch_loop(watch_dir: str, interval: int = 300):
     while True:
         try:
             stats = await sync_documents(watch_dir)
-            if any(v > 0 for k, v in stats.items() if k != "unchanged"):
+            if any(v > 0 for key, v in stats.items() if key != "unchanged"):
                 logger.info(
                     f"📊 Sync: +{stats['added']} neu, "
                     f"~{stats['updated']} aktualisiert, "

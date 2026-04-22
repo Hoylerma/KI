@@ -1,0 +1,53 @@
+{
+    "custom_fonts": [],
+    "variables": {
+        "light": {
+            "--font-sans": "'Inter', sans-serif",
+            "--font-mono": "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
+            "--background": "0 0% 96%",
+            "--foreground": "0 0% 0%",
+            "--card": "0 0% 100%",
+            "--card-foreground": "0 0% 0%",
+            "--popover": "0 0% 100%",
+            "--popover-foreground": "0 0% 0%",
+            "--primary": "53 100% 50%",         
+            "--primary-foreground": "0 0% 0%",  
+            "--secondary": "0 0% 93%",
+            "--secondary-foreground": "0 0% 29%",
+            "--muted": "0 0% 85%",
+            "--muted-foreground": "0 0% 45%",
+            "--accent": "53 100% 50%",
+            "--accent-foreground": "0 0% 0%",
+            "--destructive": "0 84.2% 60.2%",
+            "--destructive-foreground": "0 0% 98%",
+            "--border": "0 0% 85%",
+            "--input": "0 0% 85%",
+            "--ring": "53 100% 50%",
+            "--radius": "0.5rem"
+        },
+        "dark": {
+            "--font-sans": "'Inter', sans-serif",
+            "--font-mono": "source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace",
+            "--background": "0 0% 0%",
+            "--foreground": "0 0% 93%",
+            "--card": "0 0% 13%",
+            "--card-foreground": "0 0% 93%",
+            "--popover": "0 0% 13%",
+            "--popover-foreground": "0 0% 93%",
+            "--primary": "53 100% 50%",        
+            "--primary-foreground": "0 0% 0%",  
+            "--secondary": "0 0% 15%",
+            "--secondary-foreground": "0 0% 93%",
+            "--muted": "0 0% 20%",
+            "--muted-foreground": "0 0% 70%",
+            "--accent": "53 100% 50%",
+            "--accent-foreground": "0 0% 0%",
+            "--destructive": "0 62.8% 30.6%",
+            "--destructive-foreground": "0 0% 98%",
+            "--border": "0 0% 20%",
+            "--input": "0 0% 20%",
+            "--ring": "53 100% 50%",
+            "--radius": "0.5rem"
+        }
+    }
+}
