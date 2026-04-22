@@ -1,11 +1,7 @@
 from typing import List
 
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-from config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION_NAME
-from database import get_pool, get_vector_store
-from parsers import parse_document
+from config import COLLECTION_NAME
+from database import get_pool
 
 async def list_documents() -> List[dict]:
     """List all documents stored in the vector store (grouped by filename)."""

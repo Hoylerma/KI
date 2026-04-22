@@ -1,12 +1,9 @@
 {
-  "dependencies": {
-    "@assistant-ui/react": "^0.12.14",
-    "@assistant-ui/react-markdown": "^0.12.5",
-    "lucide-react": "^0.576.0",
-    "react-dom": "^19.2.4"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3"
+  "name": "bw-i-ki",
+  "private": true,
+  "description": "React frontend replaced by Chainlit. This package file is kept only for helper scripts.",
+  "scripts": {
+    "chainlit": "chainlit run chainlit_app.py",
+    "chainlit:dev": "chainlit run chainlit_app.py -w"
   }
 }

@@ -1,29 +1,21 @@
 
+import asyncio
+import logging
+import os
+import time
 
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel
-from config import CHAT_MODEL, OLLAMA_BASE_URL, SYSTEM_PROMPT
-import asyncio
-from pydantic import BaseModel
-from fastapi import status
 
-# Importiere unsere frisch erstellte Funktion
 from auth import check_ldap_login
-
-import time
-import logging
-
-import os
-from file_watcher import watch_loop, sync_documents, ingest_document_with_hash
-
-from config import CHAT_MODEL, OLLAMA_BASE_URL
+from config import CHAT_MODEL, OLLAMA_BASE_URL, SYSTEM_PROMPT
 from database import close_db, init_db
 from documents import delete_document, list_documents
+from file_watcher import ingest_document_with_hash, sync_documents, watch_loop
 from retrieval import rag_search_async
 
 app = FastAPI()
@@ -42,15 +34,15 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:80",
     "http://localhost:8080",
-    "http://localhost:8000"
+    "http://localhost:8000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,      
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],         
-    allow_headers=["*"],         
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class ChatMessage(BaseModel):
@@ -59,12 +51,6 @@ class ChatMessage(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
-
-
-@app.on_event("startup")
-async def startup():
-    await init_db()
-
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -89,7 +75,10 @@ async def upload_document(file: UploadFile = File(...)):
     if ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"Dateiformat .{ext} nicht unterstützt. Erlaubt: {', '.join(allowed_extensions)}",
+            detail=(
+                f"Dateiformat .{ext} nicht unterstützt. "
+                f"Erlaubt: {', '.join(sorted(allowed_extensions))}"
+            ),
         )
 
     file_bytes = await file.read()
@@ -148,7 +137,8 @@ async def stream_response(prompt: str, request: Request):
 
     if rag_context:
         user_content = (
-            "Du bist ein interner Wissens-AssistentBeantworte die folgende Frage basierend auf dem bereitgestellten Kontext. "
+            "Du bist ein interner Wissens-Assistent. "
+            "Beantworte die folgende Frage basierend auf dem bereitgestellten Kontext. "
             "Wenn der Kontext nicht ausreicht, nutze dein allgemeines Wissen, aber weise darauf hin. "
             "Nenne am Ende die verwendeten Quellen.\n\n"
             f"--- KONTEXT ---\n{rag_context}\n--- ENDE KONTEXT ---\n\n"
@@ -216,17 +206,14 @@ async def chat(data: ChatMessage, request: Request):
 
 @app.post("/api/login")
 async def login_endpoint(req: LoginRequest):
-    
     login_ok = check_ldap_login(req.username, req.password)
-    
-   
+
     if not login_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Falscher Benutzername oder Passwort"
+            detail="Falscher Benutzername oder Passwort",
         )
-    
-    
+
     return {"message": "Login erfolgreich", "access_token": "ldap-okay-token"}
 
 @app.on_event("startup")
