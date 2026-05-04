@@ -12,14 +12,11 @@ DATABASE_URL: str = os.getenv(
     "DATABASE_URL", "postgresql://raguser:ragpass@postgres:5432/ragdb"
 )
 
-CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "2000"))
-CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "400"))
-MAX_CONTEXT_CHARS: int = int(os.getenv("MAX_CONTEXT_CHARS", "4000"))
+CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1000"))
+CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "100"))
 RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "15"))
-MIN_SIMILARITY: float = float(os.getenv("MIN_SIMILARITY", "0.5"))
 
 COLLECTION_NAME = "documents"
-_CONTEXT_SEPARATOR = "\n\n---\n\n"
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 

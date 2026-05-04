@@ -1,6 +1,5 @@
 # BW-i KI Chat
 
-Dieses Projekt nutzt Chainlit als Benutzeroberflaeche.
 
 ## Schnellstart
 

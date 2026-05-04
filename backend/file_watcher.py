@@ -18,7 +18,7 @@ from parsers import parse_document
 
 logger = logging.getLogger("bwiki.watcher")
 
-ALLOWED_EXTENSIONS = {"pdf", "docx", "jpg", "jpeg", "png", "txt"}
+ALLOWED_EXTENSIONS = {"pdf", "docx", "jpg", "jpeg", "png"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 

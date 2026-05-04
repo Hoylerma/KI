@@ -101,7 +101,7 @@ name = "BW-i KI Chat"
 
 # Force a specific language for all users (e.g., "en-US", "he-IL", "fr-FR")
 # If not set, the browser's language will be used
-# language = "en-US"
+language = "de-DE"
 
 # layout = "wide"
 
@@ -156,7 +156,7 @@ login_page_image_dark_filter = "blur-[0.4px] contrast-[180%] brightness-[105%]"
 logo_file_url = ""
 
 # Load assistant avatar image directly from URL.
-default_avatar_file_url = "/public/avatars/Assistant.png"
+default_avatar_file_url = "/public/avatars/my_assistant.png"
 
 # Avatar size in pixels (default: 20).
 avatar_size = 40
