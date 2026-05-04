@@ -23,8 +23,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
       - CHAT_MODEL=${CHAT_MODEL:-llama3.1}
-      - CHUNK_SIZE=${CHUNK_SIZE:-2000}
-      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-400}
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-100}
       - MAX_CONTEXT_CHARS=${MAX_CONTEXT_CHARS:-4000}
       - RAG_TOP_K=${RAG_TOP_K:-5}
       - WATCH_DIR=/app/watched_docs
@@ -45,6 +45,11 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     depends_on:
       - postgres
 
@@ -58,10 +63,14 @@ services:
       - BACKEND_API_BASE_URL=http://backend:8000
       - CHAINLIT_PORT=8001
       - CHAINLIT_AUTH_SECRET=${CHAINLIT_AUTH_SECRET}
+      - CHAINLIT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       - backend
+      - postgres
+         
     volumes:
       - .:/app
+      - /mnt/dokumente/01_Internes/04_EDV_js/:/app/watched_docs:ro
 
 volumes:  
   pgdata:

@@ -1,5 +1,3 @@
-import asyncio
-
 import asyncpg
 from langchain_ollama import OllamaEmbeddings
 from langchain_postgres import PGVector

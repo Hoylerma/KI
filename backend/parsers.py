@@ -60,7 +60,7 @@ def parse_document(filename: str, file_bytes: bytes) -> str:
         return _parse_docling(file_bytes, filename)
     if ext == "docx":
         return _parse_docx(file_bytes, filename)
-    if ext in ("txt", "md", "csv", "json", "xml", "html"):
+    if ext in ( "csv","xml", "html"):
         return _parse_txt(file_bytes, filename)
 
     logger.warning(f"⚠️ Nicht unterstütztes Format: .{ext} bei {filename}")

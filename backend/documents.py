@@ -1,9 +1,7 @@
-from typing import List
-
 from config import COLLECTION_NAME
 from database import get_pool
 
-async def list_documents() -> List[dict]:
+async def list_documents() -> list[dict]:
     """List all documents stored in the vector store (grouped by filename)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
