@@ -35,6 +35,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - /mnt/dokumente/01_Internes/04_EDV_js/:/app/watched_docs:ro
+    mem_limit: 16g
 
   pgadmin:
     image: dpage/pgadmin4:8.14

@@ -2,6 +2,7 @@ import os
 
 from anyio import Path
 
+# Zentrale Laufzeit-Konfiguration: Alle Werte sind per ENV ueberschreibbar.
 # Support both OLLAMA_BASE_URL (preferred) and legacy OLLAMA_API
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL") or os.getenv(
     "OLLAMA_API", "http://localhost:11434"
@@ -18,6 +19,7 @@ RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "15"))
 
 COLLECTION_NAME = "documents"
 
+# Prompt-Dateien liegen unter backend/prompts/.
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 def load_prompt(name: str) -> str:
@@ -29,5 +31,5 @@ def load_prompt(name: str) -> str:
         return f.read().strip()
 
 
-# Beim Import einmal laden
+# Beim Import einmal laden, damit der Prompt spaeter nicht pro Request gelesen wird.
 SYSTEM_PROMPT = load_prompt("system")

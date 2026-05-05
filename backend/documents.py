@@ -3,6 +3,7 @@ from database import get_pool
 
 async def list_documents() -> list[dict]:
     """List all documents stored in the vector store (grouped by filename)."""
+    # Liest aggregiert aus den Embeddings und gruppiert nach Dateinamen.
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -25,6 +26,7 @@ async def list_documents() -> list[dict]:
 
 async def delete_document(filename: str) -> bool:
     """Delete all chunks belonging to *filename* from the vector store."""
+    # Entfernt alle Vektor-Chunks einer Datei aus der Standard-Collection.
     pool = await get_pool()
     async with pool.acquire() as conn:
         result = await conn.execute(
