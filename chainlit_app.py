@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Any
 import uuid
-
+import logging
 from ldap3 import ALL, Connection, Server
 import chainlit as cl
 import httpx
@@ -16,6 +16,9 @@ STREAM_TIMEOUT = httpx.Timeout(None, connect=None)
 BACKEND_URL = os.getenv("BACKEND_API_BASE_URL", "http:127.0.0.1//:8000",).rstrip("/")
 LDAP_SERVER_URL = os.getenv("LDAP_SERVER_URL", "ldap://12353-DC01.bwi.local")
 
+
+logger = logging.getLogger("bwiki.chainlit")
+
 def backend_url(path: str) -> str:
     """Hilfsfunktion fuer sauberes URL-Building zu Backend-Routen."""
     return f"{BACKEND_URL}{path}"
@@ -23,12 +26,17 @@ def backend_url(path: str) -> str:
 # --- Chat mit dem Backend ---
 async def stream_chat(prompt: str) -> str:
     """Sendet die Frage an den /chat Endpunkt und streamt die Antwort."""
+    
+    # --- HIER FEHLTE DIE VARIABLE ---
     content_parts: list[str] = []
     
-    # Session-Daten aus Chainlit laden (Profil + optionale Upload-Collection-ID).
+    # Session-Daten laden
     chat_profile = cl.user_session.get("chat_profile")
-    backend_session_id = cl.user_session.get("backend_session_id") # <-- NEU
+    backend_session_id = cl.user_session.get("backend_session_id")
+    username = cl.user_session.get("username") 
     
+    print(f"\n---> SENDE AN BACKEND | User: {username} | Session: {backend_session_id}")
+
     assistant = cl.Message(content="", author="Chatbot")
     await assistant.send()
 
@@ -40,17 +48,19 @@ async def stream_chat(prompt: str) -> str:
                 json={
                     "message": prompt,
                     "profile" : chat_profile,
-                    "session_id": backend_session_id 
+                    "session_id": backend_session_id,
+                    "username": username 
                 },
             ) as response:
                 response.raise_for_status()
                 async for chunk in response.aiter_text():
                     if not chunk:
                         continue
-                    content_parts.append(chunk)
+                    content_parts.append(chunk) # Jetzt gibt es die Liste!
                     await assistant.stream_token(chunk)
+                    
     except httpx.HTTPStatusError as exc:
-        await exc.response.aread()
+        await exc.response.aread() 
         error_text = f"Backend-Fehler beim Chat ({exc.response.status_code}): {exc.response.text[:200]}"
         assistant.content = error_text
         await assistant.update()
@@ -61,9 +71,12 @@ async def stream_chat(prompt: str) -> str:
         await assistant.update()
         return error_text
 
+    # --- DAS WICHTIGE UPDATE FÜR F5 ---
     final_content = "".join(content_parts)
+    assistant.content = final_content
+    await assistant.update()  # Sagt Chainlit, dass die Antwort fertig zum Speichern ist
+    
     return final_content
-
 @cl.set_chat_profiles
 async def chat_profiles():
     return [
@@ -84,10 +97,10 @@ async def auth(username: str, password: str) -> cl.User | None:
             return cl.User(identifier=username, metadata={"role": "user", "source": "ldap"})
         return None
     except Exception as e:
-        print(f"LDAP Fehler: {e}")
+            logger.info(f"LDAP Fehler: {e}")
     return cl.User(identifier=username, metadata={"role": "user", "source": "ldap"})
 
-@cl.on_chat_start
+
 @cl.on_chat_start
 async def on_chat_start() -> None:
     chat_profile = cl.user_session.get("chat_profile")
@@ -97,60 +110,31 @@ async def on_chat_start() -> None:
     username = user.identifier if user else "anonym"
     cl.user_session.set("username", username)
     
-    history_loaded = False
+    # --- GANZ WICHTIG: KEINE HISTORIE MEHR LADEN ---
+    # Wir generieren immer sofort eine neue, leere Session
+    new_session_id = str(uuid.uuid4())
+    cl.user_session.set("backend_session_id", new_session_id)
     
-    # Logge im Terminal, wer sich anmeldet
-    print(f"\n--- Starte Chat für User: {username} ---")
+    logger.info(f"\n--- 🆕 NEUER CHAT gestartet für User: {username} | Session: {new_session_id} ---")
 
-    # 1. Prüfen, ob das Backend alte Nachrichten für diesen User hat
-    try:
-        async with httpx.AsyncClient() as client:
-            url = backend_url(f"/history/{username}")
-            print(f"Frage Historie ab: {url}")
-            
-            resp = await client.get(url)
-            
-            if resp.status_code == 200:
-                data = resp.json()
-                backend_session_id = data.get("session_id")
-                messages = data.get("messages", [])
-                
-                print(f"✅ Gefundene Session: {backend_session_id}")
-                print(f"✅ Anzahl geladener Nachrichten: {len(messages)}")
+    await cl.Message(
+        content=f"Willkommen! Der Chat wurde im Modus **{chat_profile}** gestartet.\n"
+                "Du kannst mir direkt eine Frage stellen oder über die Büroklammer (unten links) ein Dokument hochladen.",
+        author="Chatbot"
+    ).send()
 
-                # Wenn wir eine alte Session gefunden haben, stellen wir sie wieder her!
-                if backend_session_id and messages:
-                    cl.user_session.set("backend_session_id", backend_session_id)
-                    history_loaded = True
-                    
-                    # Nachrichten-Blasen generieren
-                    for msg in messages:
-                        # HIER WAR DER FEHLER: Wir nutzen jetzt 'username' statt 'user.identifier'
-                        author = "Chatbot" if msg["role"] == "assistant" else username
-                        
-                        # Nur Blasen anzeigen, die auch wirklich Text enthalten
-                        if msg["content"].strip():
-                            await cl.Message(content=msg["content"], author=author).send()
-            else:
-                print(f"⚠️ Backend antwortet mit Status: {resp.status_code}")
-                
-    except Exception as e:
-        print(f"❌ FEHLER beim Laden der Historie: {e}")
 
-    # 2. Wenn es ein GANZ NEUER Chat ist (keine Historie gefunden)
-    if not history_loaded:
-        print("Starte eine komplett neue Session.")
-        cl.user_session.set("backend_session_id", str(uuid.uuid4()))
-        await cl.Message(
-            content=f"Willkommen! Der Chat wurde im Modus **{chat_profile}** gestartet.\n"
-                    "Du kannst mir direkt eine Frage stellen oder über die Büroklammer (unten links) ein Dokument hochladen.",
-            author="Chatbot"
-        ).send()
+
 
 @cl.on_chat_resume
 async def on_chat_resume(thread):
-    pass    
-
+    user = cl.user_session.get("user")
+    username = user.identifier if user else "anonym"
+    cl.user_session.set("username", username)
+    
+    logger.info(f"\n--- 🔄 F5 / Neu-Laden erkannt für User: {username} ---")
+    logger.info("Chainlit lädt die UI automatisch. Keine DB-Abfrage nötig.")
+    # Kein manuelles cl.Message().send() mehr!
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     # Aktuelles Profil abfragen

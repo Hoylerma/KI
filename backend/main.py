@@ -7,7 +7,7 @@ from starlette.background import BackgroundTask
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 from config import CHAT_MODEL, OLLAMA_BASE_URL, SYSTEM_PROMPT
@@ -108,6 +108,20 @@ async def remove_document(filename: str):
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden.")
     return {"status": "deleted", "filename": filename}
 
+@app.get("/view")
+async def view_document(path: str):
+    """Gibt ein Dokument direkt an den Browser zurück, um es anzuzeigen."""
+    
+    # --- SICHERHEITS-CHECK ---
+    # Erlaubt nur Pfade, die mit /mnt/dokumente/ beginnen!
+    if not path.startswith("/mnt/dokumente/"):
+        raise HTTPException(status_code=403, detail="Zugriff verweigert. Ungültiger Pfad.")
+    
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden oder Pfad falsch.")
+    
+    return FileResponse(path, content_disposition_type="inline")
+
 
 
 @app.post("/chat")
@@ -131,23 +145,33 @@ async def chat(data: ChatMessage, request: Request):
     # 2. DANN die neue User-Nachricht SOFORT in der DB speichern
     await save_chat_message(session_id, username, "user", user_message)
 
-    # 3. Der neue, sichere Stream-Wrapper
-    # Wir nutzen eine Liste als "Container", um den Text aus dem Stream abzufangen
-    bot_response_container = [""] 
+    # 3. Der kugelsichere Stream-Wrapper (ohne BackgroundTask)
+    async def stream_and_save(generator):
+        full_bot_response = ""
+        try:
+            # Wir geben jedes Token ans Frontend und merken es uns gleichzeitig
+            async for chunk in generator:
+                full_bot_response += chunk
+                yield chunk
+        finally:
+            # WICHTIG: Dieser Block wird am Ende IMMER ausgeführt!
+            final_text = full_bot_response.strip()
+            logger.info("\n" + "="*50)
+            logger.info(f"🏁 Stream beendet für User: {username}")
+            logger.info(f"📝 Text-Länge gesammelt: {len(final_text)} Zeichen")
+            
+            if final_text:
+                try:
+                    # Direkter Speicher-Befehl aus dem Stream heraus
+                    await save_chat_message(session_id, username, "assistant", final_text)
+                    logger.info("✅ Bot-Antwort ERFOLGREICH in die DB geschrieben!")
+                except Exception as e:
+                    logger.info(f"❌ FATALER DB-FEHLER beim Speichern: {e}")
+            else:
+                logger.info("⚠️ WARNUNG: Der Bot-Text war leer, nichts gespeichert.")
+            logger.info("="*50 + "\n")
 
-    async def stream_wrapper(generator):
-        async for chunk in generator:
-            bot_response_container[0] += chunk
-            yield chunk
-
-    # 4. Diese Funktion läuft als BackgroundTask, NACHDEM der Stream fertig ist
-    async def save_bot_message_to_db():
-        final_text = bot_response_container[0].strip()
-        if final_text:
-            # Jetzt speichern wir den kompletten Text ganz in Ruhe ab
-            await save_chat_message(session_id, username, "assistant", final_text)
-
-    # 5. Routing an die Agenten
+    # 4. Routing an die Agenten
     if selected_profile == "RAG-Suche":
         generator = stream_response(user_message, request, history=formatted_history)
     elif selected_profile == "Summary-Agent":
@@ -155,11 +179,10 @@ async def chat(data: ChatMessage, request: Request):
     else:
         generator = stream_response(user_message, request, history=formatted_history)
 
-    # 6. Stream mit angehängter Hintergrundaufgabe zurückgeben
+    # 5. Stream zurückgeben (ACHTUNG: background=BackgroundTask(...) fliegt komplett raus!)
     return StreamingResponse(
-        stream_wrapper(generator),
-        media_type="text/event-stream",
-        background=BackgroundTask(save_bot_message_to_db) # <--- HIER passiert die Magie
+        stream_and_save(generator),
+        media_type="text/event-stream"
     )
 
 @app.on_event("startup")

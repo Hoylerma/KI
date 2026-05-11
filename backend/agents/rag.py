@@ -27,7 +27,7 @@ async def contextualize_query(prompt: str, history: str) -> str:
     
     DEINE REGELN:
     1. THEMENWECHSEL ERKENNEN: Wenn die neue Frage ein komplett neues Thema anspricht und auch OHNE den Verlauf verständlich ist, musst du exakt die neue Frage zurückgeben. Verknüpfe sie NICHT mit dem alten Thema!
-    2. NACHFRAGEN UMSCHREIBEN: Wenn die neue Frage unvollständig ist und sich offensichtlich auf das vorherige Thema bezieht (z.B. weil sie Wörter wie "er", "sie", "es", "dafür", "den Link" enthält), formuliere sie in eine eigenständige Suchanfrage um.
+    2. NACHFRAGEN UMSCHREIBEN: Wenn die neue Frage unvollständig ist und sich offensichtlich auf das vorherige Thema bezieht (z.B. weil sie Wörter wie "er", "sie", "es", "dafür", "den Link", oder ähnliche enthält), formuliere sie in eine eigenständige Suchanfrage um.
     
     WICHTIG: Antworte AUSSCHLIESSLICH mit der finalen (umgeschriebenen oder originalen) Frage. Keine Begrüßung, keine Erklärungen, keine Anführungszeichen.
 

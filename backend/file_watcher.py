@@ -209,7 +209,7 @@ async def ingest_document_with_hash(
     return {"filename": filename, "chunks": len(documents)}
 
 
-async def watch_loop(watch_dir: str, interval: int = 300):
+async def watch_loop(watch_dir: str, interval: int = 30000):
     """Endlosschleife: Synchronisiert alle X Sekunden."""
     logger.info(f"👁️ File Watcher gestartet: {watch_dir} (alle {interval}s)")
 
