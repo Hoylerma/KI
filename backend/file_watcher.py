@@ -4,20 +4,23 @@ automatisch in die RAG-Pipeline.
 """
 
 import asyncio
+from datetime import datetime
 import hashlib
 import logging
 import os
 from typing import Dict
 
+
 from config import CHUNK_OVERLAP, CHUNK_SIZE, COLLECTION_NAME
 from database import get_pool, get_vector_store
 from documents import delete_document
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from parsers import parse_document
 
 logger = logging.getLogger("bwiki.watcher")
 
+# Nur diese Formate werden automatisch aus dem Watch-Ordner ingestiert.
 ALLOWED_EXTENSIONS = {"pdf", "docx", "jpg", "jpeg", "png"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
@@ -97,7 +100,8 @@ async def sync_documents(watch_dir: str) -> dict:
     # Bereits indizierte Dateien
     indexed_files = await get_indexed_files()
 
-    # 1. Neue und geänderte Dateien verarbeiten
+    # 1) Neue und geaenderte Dateien verarbeiten.
+    #    Vergleich erfolgt ueber den gespeicherten Datei-Hash.
     for rel_path, info in current_files.items():
         try:
             old_hash = indexed_files.get(rel_path)
@@ -126,7 +130,7 @@ async def sync_documents(watch_dir: str) -> dict:
             stats["errors"] += 1
             logger.error(f"❌ Fehler bei {rel_path}: {e}")
 
-    # 2. Gelöschte Dateien aus DB entfernen
+    # 2) Gelöschte Dateien aus der DB entfernen.
     for indexed_name in indexed_files:
         if indexed_name not in current_files:
             await delete_document(indexed_name)
@@ -136,42 +140,76 @@ async def sync_documents(watch_dir: str) -> dict:
     return stats
 
 
-async def ingest_document_with_hash(
-    filename: str, file_bytes: bytes, file_hash: str
-) -> dict:
-    """Speichert den File-Hash in den Metadaten."""
+# file_watcher.py (nur diese Funktion ersetzen)
 
+async def ingest_document_with_hash(
+    filename: str, file_bytes: bytes, file_hash: str, collection_name: str = None, filepath: str = None, timestamp: datetime = None) -> dict:
+    """
+    Parse -> Split -> Metadaten setzen -> in PGVector speichern.
+    file_hash wird mitgespeichert, damit spaetere Aenderungen erkannt werden.
+    """
+
+    # 1. Dokument parsen (z.B. mit Docling zu Markdown)
     text = parse_document(filename, file_bytes)
     if not text.strip():
         logger.warning(f"Dokument ist leer oder unlesbar, wird übersprungen: {filename}")
         return {"filename": filename, "chunks": 0}
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
-    )
-    chunks = splitter.split_text(text)
-
-    documents = [
-        Document(
-            page_content=chunk,
-            metadata={
-                "source": filename,
-                "filename": filename,
-                "file_hash": file_hash,
-                "chunk_index": i,
-            },
-        )
-        for i, chunk in enumerate(chunks)
+    # 2. Definiere, welche Markdown-Überschriften zum Splitten genutzt werden sollen
+    headers_to_split_on = [
+        ("#", "Header 1"),
+        ("##", "Header 2"),
+        ("###", "Header 3"),
     ]
 
-    await delete_document(filename)
-    vs = get_vector_store()
+    # 3. Zuerst nach der logischen Struktur (Markdown-Überschriften) splitten
+    markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    md_splits = markdown_splitter.split_text(text)
+
+    # 4. Optional: Falls einige Kapitel extrem lang sind, zerschneide sie zusätzlich nach Länge
+    # (Damit du die maximale Token-Größe für dein Embedding-Modell nicht überschreitest)
+    char_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
+    )
+    final_chunks = char_splitter.split_documents(md_splits)
+
+    # 5. Erstelle die LangChain Documents und behalte die Metadaten!
+    documents = []
+    for i, chunk in enumerate(final_chunks):
+        # Der markdown_splitter hat bereits Metadaten wie {"Header 1": "Kapitel 1"} generiert.
+        # Wir fügen unsere eigenen Metadaten (Dateiname, Hash) einfach hinzu.
+        metadata = chunk.metadata.copy() # Kopiere die Header-Metadaten
+        metadata.update({
+            "source": filename,
+            "filename": filename,
+            "filepath": filepath,
+            "file_hash": file_hash,
+            "last_modified": timestamp,
+            "chunk_index": i,
+        })
+        
+        documents.append(
+            Document(
+                page_content=chunk.page_content,
+                metadata=metadata,
+            )
+        )
+
+    # 6. In die Vector-DB laden
+    target_collection = collection_name if collection_name else COLLECTION_NAME
+    vs = get_vector_store(collection_name=target_collection)
+    
+    if not collection_name:
+        # In der Standard-Collection wird vor dem Re-Import die alte Version geloescht,
+        # damit keine doppelten Chunks fuer denselben Dateinamen entstehen.
+        await delete_document(filename)
+        
     await vs.aadd_documents(documents)
 
-    return {"filename": filename, "chunks": len(chunks)}
+    return {"filename": filename, "chunks": len(documents)}
 
 
-async def watch_loop(watch_dir: str, interval: int = 300):
+async def watch_loop(watch_dir: str, interval: int = 30000):
     """Endlosschleife: Synchronisiert alle X Sekunden."""
     logger.info(f"👁️ File Watcher gestartet: {watch_dir} (alle {interval}s)")
 

@@ -10,6 +10,7 @@ logger = logging.getLogger("bwiki.parsers")
 
 
 def get_docling_converter():
+    """Konfiguriert Docling inkl. OCR fuer PDF/Bild-Parsing."""
     pipeline_options = PdfPipelineOptions()
     pipeline_options.ocr_options = TesseractCliOcrOptions()
 
@@ -24,6 +25,7 @@ def get_docling_converter():
 
 
 def _parse_docling(file_bytes: bytes, filename: str) -> str:
+    """Extrahiert Text aus PDF/Bildern via Docling und liefert Markdown zurueck."""
     try:
         logger.info(f"🔍 Docling OCR startet für: {filename}...")
         converter = get_docling_converter()
@@ -41,6 +43,7 @@ def _parse_docling(file_bytes: bytes, filename: str) -> str:
 
 
 def _parse_docx(file_bytes: bytes, filename: str) -> str:
+    """Extrahiert sichtbare Absatztexte aus einer DOCX-Datei."""
     try:
         doc = DocxDocument(io.BytesIO(file_bytes))
         return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
@@ -50,13 +53,15 @@ def _parse_docx(file_bytes: bytes, filename: str) -> str:
 
 
 def _parse_txt(file_bytes: bytes, _filename: str) -> str:
+    """Dekodiert textbasierte Formate robust als UTF-8."""
     return file_bytes.decode("utf-8", errors="replace")
 
 
 def parse_document(filename: str, file_bytes: bytes) -> str:
+    """Waehlt parser-basiert auf Dateiendung und liefert Rohtext/Markdown."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
-    if ext in ("pdf", "jpg", "jpeg", "png"):
+    if ext in ("pdf", "jpg", "jpeg", "png",):
         return _parse_docling(file_bytes, filename)
     if ext == "docx":
         return _parse_docx(file_bytes, filename)

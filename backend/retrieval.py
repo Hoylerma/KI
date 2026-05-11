@@ -7,6 +7,7 @@ logger = logging.getLogger("bwiki.retrieval")
 
 async def rag_search_async(query: str) -> str:
     """Führt eine asynchrone RAG-Suche durch und gibt die gefundenen Dokumente als Text zurück."""
+    # Nutzt immer die globale Dokument-Collection (K-Laufwerk/Standardbestand).
     vs = get_vector_store()
 
     try:
@@ -20,9 +21,12 @@ async def rag_search_async(query: str) -> str:
             logger.warning("⚠️ Keine Dokumente in der Vektor-DB gefunden.")
             return ""
 
+        # Alle Treffer werden in ein kompaktes Kontextformat gebracht,
+        # das spaeter direkt im Prompt verwendet wird.
         kontext_bloecke = []
         for doc in docs:
             # Metadaten auslesen
+            path = doc.metadata.get("file_path", "Unbekannter Pfad")
             quelle = doc.metadata.get("filename", doc.metadata.get("source", "Unbekannt"))
 
             # Block für das LLM formatieren
